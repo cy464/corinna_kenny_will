@@ -116,6 +116,7 @@ con <- DBI::dbConnect(odbc(),
                       Port = 3306, 
                       Database = "ChicagoCrime")
 
+
 dbListFields(con, "wards")
 
 dbListFields(con, "crimes")
@@ -170,6 +171,7 @@ install.packages("dbplyr")
 
 ```{r}
 #| eval: false
+library(tidyverse)
 table_1 <- tbl(con, 
                from = dbplyr::in_schema("dbo", "crimes"))
 
@@ -216,16 +218,62 @@ library(duckdb)
 library(dbplyr)
 ```
 
+
 ```{r}
-#| eval: false
-con <- dbConnect(duckdb::duckdb())
 
-tbl(con, 
-    "C:/Users/asus/OneDrive - nd.edu/Data Wrangling 70280/Rail_Equipment_Accident_Incident_Data.csv") |>
-  group_by(`Accident Type`) |>
-  summarise(mean_killed = mean(`Total Persons Killed`)) |>
-  collect()
+odbcListDrivers()
+
+ChicagoCrime <- DBI::dbConnect(odbc(),
+                      Driver = "ODBC Driver 17 for SQL Server",
+                      Server = "mcobsql.business.nd.edu",
+                      UID = "MSBAstudent",
+                      PWD = "SQL%database!Mendoza",
+                      Port = 3306, 
+                      Database = "ChicagoCrime")
+
+select_q <- dbSendQuery(
+  conn = con, 
+  statement = "SELECT district AS 'District'
+, sum(beat) AS 'beats'
+FROM dbo.Crimes
+GROUP BY district
+"
+)
+
+result <- dbFetch(select_q)
+
+View(result)
 
 
+result <- na.omit(result)                      
+result$District <- as.factor(result$District)
+
+result$District <- reorder(result$District, result$beats)
+
+ggplot(result, aes(beats, District)) +
+  geom_bar(stat = "identity", fill = "turquoise") +
+  labs(x = "Beats",
+       y = "District",
+       title = "Beats Per District") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+```
+
+```{r}
+
+result_5 <- result %>% 
+  arrange(desc(result$beats)) %>% 
+  filter(row_number() <= 5)
+         
+         
+ggplot(result_5, aes(beats, District)) +
+  geom_bar(stat = "identity", fill = "gray") +
+  labs(x = "Beats",
+       y = "District",
+       title = "Beats Per District") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
